@@ -1,3 +1,16 @@
+"""
+This script creates the land mask that can be downloaded diectly from in/landmask.
+This land mask has a negative buffer of 0.0005° (~50 m) to allow most of the features
+detected over land areas to be clipped, whilst still allowing the final clipping 
+to be perform on higher resolution land mask (i.e. not the simplified version of the
+Coastline 50k). After pulling back from the coastline we simplify to make the 
+application of the land mask faster. 
+
+I found that this processing was so slow (> 20 min) that I never waited for it to finish. I 
+instead performed the same processing in QGIS and saved the result as a shapefile.
+These operations take about 30 seconds in QGIS.
+The script is provided here for completeness, but it is not used in the main workflow.
+"""
 import os
 import argparse
 import geopandas as gpd
@@ -5,7 +18,7 @@ import geopandas as gpd
 def process_land_mask(original_landmask_path, cached_landmask_path):
     # Check if the cached file already exists.
     if os.path.exists(cached_landmask_path):
-        print(f"Cached land mask already exists at: {cached_landmask_path}")
+        print(f"Land mask already exists at: {cached_landmask_path}")
         return
 
     print("Processing adjusted land mask...")
@@ -41,7 +54,7 @@ def main():
         type=str, 
         required=True,
         help="Path to save the processed (cached) land mask shapefile."
-        default= "working/05/Coastline-50k_trimmed.shp"
+        default= "data/in/landmask/Coastline-50k_trimmed.shp"
     )
     args = parser.parse_args()
     
