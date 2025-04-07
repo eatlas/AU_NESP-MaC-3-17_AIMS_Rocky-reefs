@@ -45,11 +45,11 @@ without loosing too much detail.
 
 1. Install required Python packages using the following command:
 ```bash
-conda env create -f environment.yml
+conda env create -f environment-3-13.yaml
 ```
 2. Activate the environment
 ```bash
-conda activate reef_maps2
+conda activate rocky-reefs_3-13
 ```
   
 ### Required Packages

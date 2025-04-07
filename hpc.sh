@@ -19,7 +19,7 @@ echo "create environment-3-13"
 ## The following 4 lines will test whether the virtual environment exists and if not, create it. If yes, the script will skip to the line after fi.
 if conda info --envs | grep -q reef_maps2; then
 		echo "reef_maps2 already exists";
-		else conda env create -f environment-3-13.yaml;
+		else conda env create -f environment.yml;
 fi
 echo "activate reef_maps2"
 ## Activate virtual environment for us to run the scripts and access the libraries that we need
@@ -31,11 +31,11 @@ FLAG_FILE="~/AU_AIMS_S2-comp/download_complete.flag"
 
 if [ ! -f "$FLAG_FILE" ]; then
     echo "Downloading the data..."
-    python 01-download-input-data.py
-    python 01-download-sentinel2.py --dataset low_tide_true_colour --region NorthernAU --output ~/AU_AIMS_S2-comp
-    python 01-download-sentinel2.py --dataset low_tide_infrared --region NorthernAU --output ~/AU_AIMS_S2-comp
-    python 01-download-sentinel2.py --dataset low_tide_true_colour --region GBR --output ~/AU_AIMS_S2-comp
-    python 01-download-sentinel2.py --dataset low_tide_infrared --region GBR --output ~/AU_AIMS_S2-comp
+    python 01c-download-input-data.py
+    python 01a-download-sentinel2.py --dataset low_tide_true_colour --region NorthernAU --output ~/AU_AIMS_S2-comp
+    python 01a-download-sentinel2.py --dataset low_tide_infrared --region NorthernAU --output ~/AU_AIMS_S2-comp
+    python 01a-download-sentinel2.py --dataset low_tide_true_colour --region GBR --output ~/AU_AIMS_S2-comp
+    python 01a-download-sentinel2.py --dataset low_tide_infrared --region GBR --output ~/AU_AIMS_S2-comp
 
     # Create the flag file to indicate the download is complete
     touch "$FLAG_FILE"
