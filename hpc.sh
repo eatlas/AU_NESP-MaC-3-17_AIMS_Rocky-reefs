@@ -1,4 +1,4 @@
-#!/bin/bash 					## We use bash in this case
+#!/bin/bash 					
 #SBATCH --ntasks=50 			## The number of paralel tasks are limited to 50. Please change this number to match your environment. A higher number here will normally mean longer wait in the Slurm queue.
 #SBATCH --cpus-per-task=1		## The scipt will use 1 CPU per task. 
 #SBATCH --mem-per-cpu=5G		## Pleease adjust this to match your environment. The higher the number the longer the wait in the Slurm queue.
@@ -31,14 +31,18 @@ FLAG_FILE="~/AU_AIMS_S2-comp/download_complete.flag"
 
 if [ ! -f "$FLAG_FILE" ]; then
     echo "Downloading the data..."
-    python 01c-download-input-data.py
+    
     python 01a-download-sentinel2.py --dataset low_tide_true_colour --region NorthernAU --output ~/AU_AIMS_S2-comp
     python 01a-download-sentinel2.py --dataset low_tide_infrared --region NorthernAU --output ~/AU_AIMS_S2-comp
     python 01a-download-sentinel2.py --dataset low_tide_true_colour --region GBR --output ~/AU_AIMS_S2-comp
     python 01a-download-sentinel2.py --dataset low_tide_infrared --region GBR --output ~/AU_AIMS_S2-comp
-
+    python 01b-create-virtual-rasters.py --base-dir ~/AU_AIMS_S2-comp
     # Create the flag file to indicate the download is complete
     touch "$FLAG_FILE"
 else
     echo "Data already downloaded. Skipping download step."
 fi
+
+python 01c-download-input-data.py
+python 02-extract-training-data.py --imagery-path ~/AU_AIMS_S2-comp
+python 04-train-random-forest.py
