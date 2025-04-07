@@ -15,10 +15,10 @@ import os
 import argparse
 import geopandas as gpd
 
-def process_land_mask(original_landmask_path, cached_landmask_path):
+def process_land_mask(original_landmask_path, output_landmask_path):
     # Check if the cached file already exists.
-    if os.path.exists(cached_landmask_path):
-        print(f"Land mask already exists at: {cached_landmask_path}")
+    if os.path.exists(output_landmask_path):
+        print(f"Land mask already exists at: {output_landmask_path}")
         return
 
     print("Processing adjusted land mask...")
@@ -33,10 +33,10 @@ def process_land_mask(original_landmask_path, cached_landmask_path):
     # Create a new GeoDataFrame with the adjusted geometry.
     adjusted_gdf = gpd.GeoDataFrame({'geometry': [land_mask_geom]}, crs=land_mask_gdf.crs)
     # Ensure the output directory exists.
-    os.makedirs(os.path.dirname(cached_landmask_path), exist_ok=True)
+    os.makedirs(os.path.dirname(output_landmask_path), exist_ok=True)
     # Save the adjusted land mask as a shapefile.
-    adjusted_gdf.to_file(cached_landmask_path)
-    print(f"Adjusted land mask cached to: {cached_landmask_path}")
+    adjusted_gdf.to_file(output_landmask_path)
+    print(f"Adjusted land mask cached to: {output_landmask_path}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -56,7 +56,7 @@ def main():
     )
     args = parser.parse_args()
     
-    process_land_mask(args.original_landmask, args.cached_landmask)
+    process_land_mask(args.original_landmask, args.output)
 
 if __name__ == '__main__':
     main()
