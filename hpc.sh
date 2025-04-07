@@ -1,20 +1,17 @@
 #!/bin/bash 					
-#SBATCH --ntasks=50 			## The number of paralel tasks are limited to 50. Please change this number to match your environment. A higher number here will normally mean longer wait in the Slurm queue.
-#SBATCH --cpus-per-task=1		## The scipt will use 1 CPU per task. 
-#SBATCH --mem-per-cpu=5G		## Pleease adjust this to match your environment. The higher the number the longer the wait in the Slurm queue.
-#SBATCH --job-name=AU-NESP		## Name that shows in the Slurm queue
-#SBATCH --time=0				## Zero means no (wall) time limitation. Wall time is maximum time to run the script for. 
-#SBATCH --partition=cpuq		## Please change cpuq to your partition name (or delete the whole line to automatically assign partition)
+# This script prepares the Python environment and downloads the data for the project.
+# It then runs all the preparation steps for the dataset. Each of these steps is run
+# sequentially.
+
+# Get this script by first running the following command in your terminal:
+# git clone https://github.com/eatlas/AU_NESP-MaC-3-17_AIMS_Rocky-reefs
+# cd AU_NESP-MaC-3-17_AIMS_Rocky-reefs ## move to a directory where the code is.
+# Then use:
+# chmod +x 00-hpc-prep.sh ## to make the script executable
 
 module purge ## Purge all loaded modules
-module load slurm ## load Slurm module. On some HPCs this is automatically loaded after Purge.
 module load conda/anaconda3 #Loading Anaconda module. Change this top suit your environment. Execute module avail to get the list of available modules in your environment. 
-## The following 4 lines test whether the directory exists and if not, the script will clone the code from GitHub, otherwise, it will skip to after fi
-if [ ! -d "AU_NESP-MaC-3-17_AIMS_Rocky-reefs" ] ; then 
-		echo "cloning"
-		git clone https://github.com/eatlas/AU_NESP-MaC-3-17_AIMS_Rocky-reefs
-fi
-cd AU_NESP-MaC-3-17_AIMS_Rocky-reefs ## move to a directory where the code is.
+
 echo "create environment-3-13"
 ## The following 4 lines will test whether the virtual environment exists and if not, create it. If yes, the script will skip to the line after fi.
 if conda info --envs | grep -q reef_maps2; then
