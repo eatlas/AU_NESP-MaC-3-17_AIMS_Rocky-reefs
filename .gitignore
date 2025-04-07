@@ -1,0 +1,5 @@
+data/
+working/
+working-data/
+__pycache__
+deprecated/
