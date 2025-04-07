@@ -50,10 +50,10 @@ def main():
         default="data/in-3p/Coast50k_2024/Simp/AU_NESP-MaC-3-17_AIMS_Aus-Coastline-50k_2024_V1-1_simp.shp"
     )
     parser.add_argument(
-        '--cached-landmask', 
+        '--output', 
         type=str, 
         required=True,
-        help="Path to save the processed (cached) land mask shapefile."
+        help="Path to save the processed land mask shapefile.",
         default= "data/in/landmask/Coastline-50k_trimmed.shp"
     )
     args = parser.parse_args()
