@@ -1,6 +1,7 @@
 from data_downloader import DataDownloader
 import os
 
+VERSION = 'V1'
 # Create an instance of the DataDownloader class
 downloader = DataDownloader(download_path="data/in-3p")
 
@@ -16,6 +17,14 @@ downloader.download_and_unzip(direct_download_url, 'Coast50k_2024', subfolder_na
 # Use this version for overview maps
 direct_download_url = 'https://nextcloud.eatlas.org.au/s/DcGmpS3F5KZjgAG/download?path=%2FV1-1%2F&files=Simp'
 downloader.download_and_unzip(direct_download_url, 'Coast50k_2024', subfolder_name='Simp', flatten_directory=True)
+
+
+# --------------------------------------------------------
+# Input data for the Rocky reefs dataset. This includes training data for the model
+# and land mask.
+downloader.download_path = 'data'
+direct_download_url = f'https://nextcloud.eatlas.org.au/s/QD84aRGoKYs3KtP/download?path=%2F{VERSION}%2F&files=in'
+downloader.download_and_unzip(direct_download_url, 'in', flatten_directory=True)
 
 
 

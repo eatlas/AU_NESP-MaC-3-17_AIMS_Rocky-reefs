@@ -1,21 +1,36 @@
+"""
+
+Running locally with the imagery on a separate drive:
+python 02-extract-training-data.py --imagery-path 'D:\AU_AIMS_MARB-S2-comp_p15\AU_NESP-MaC-3-17_AIMS_Shallow-mask\data\in-3p\AU_AIMS_S2-comp'
+"""
 import pandas as pd
 import geopandas as gpd
 import rasterio
 from pathlib import Path
 import os
 import numpy as np # Import numpy for handling nodata potentially
+import argparse
 
 print("Script started...")
 
-# --- Configuration ---
+# --- Command Line Arguments ---
+parser = argparse.ArgumentParser(
+    description="Extract pixel values from satellite imagery VRTs and combine them with training data."
+)
+parser.add_argument(
+    '--imagery-path',
+    type=str,
+    default='data/in-3p/AU_AIMS_S2-comp',
+    help="Base path to the satellite imagery dataset. This expects the directory structure to be from 01a-download-input-data.py."
+)
+args = parser.parse_args()
 
 # --- Input file paths ---
-# *** UPDATED: Define separate base path for imagery on external drive ***
-# Use a raw string (r'...') for Windows paths to avoid issues with backslashes
-imagery_base_path = Path(r'D:\AU_AIMS_MARB-S2-comp_p15\AU_NESP-MaC-3-17_AIMS_Shallow-mask\data\in-3p\AU_AIMS_S2-comp')
+# Use the provided imagery path
+imagery_base_path = Path(args.imagery_path)
 
-# *** UPDATED: Training data path relative to the script location ***
-training_shp_path = Path('data/in/Training-data.shp')
+
+training_shp_path = Path('data/in/training/Training-data.shp')
 
 # VRT paths using the imagery base path
 false_color_vrt_path = imagery_base_path / 'low_tide_infrared' / 'NorthernAU.vrt'

@@ -19,11 +19,11 @@ echo "create environment-3-13"
 ## The following 4 lines will test whether the virtual environment exists and if not, create it. If yes, the script will skip to the line after fi.
 if conda info --envs | grep -q reef_maps2; then
 		echo "reef_maps2 already exists";
-		else conda env create -f environment.yml;
+		else conda env create -f environment-3-13.yaml;
 fi
-echo "activate reef_maps2"
+echo "activate rocky-reefs_3-13"
 ## Activate virtual environment for us to run the scripts and access the libraries that we need
-conda activate reef_maps2
+conda activate rocky-reefs_3-13
 
 # Check if the data has already been downloaded
 # If not, download it and create a flag file

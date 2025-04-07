@@ -16,11 +16,10 @@ Key Features:
     - Produces `.vrt` files named after the subfolder (e.g., subfolder `detector-inshore` => `detector-inshore.vrt`).
 
 Usage:
-    python 06d-create-output-virtual-rasters.py --base-dir <PATH_TO_TOP_LEVEL_DIRECTORY>
+    python 01b-create-output-virtual-rasters.py --base-dir <PATH_TO_TOP_LEVEL_DIRECTORY>
 
 To reproduce the dataset:
-    python 06d-create-virtual-rasters.py --base-dir data/in-3p
-    python 06d-create-virtual-rasters.py --base-dir working-data
+    python 01b-create-virtual-rasters.py --base-dir data/in-3p
 
 
 Dependencies:
