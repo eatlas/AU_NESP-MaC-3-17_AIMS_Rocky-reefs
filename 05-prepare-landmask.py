@@ -45,14 +45,12 @@ def main():
     parser.add_argument(
         '--original-landmask', 
         type=str, 
-        required=True,
         help="Path to the original land mask shapefile.",
         default="data/in-3p/Coast50k_2024/Simp/AU_NESP-MaC-3-17_AIMS_Aus-Coastline-50k_2024_V1-1_simp.shp"
     )
     parser.add_argument(
         '--output', 
         type=str, 
-        required=True,
         help="Path to save the processed land mask shapefile.",
         default= "data/in/landmask/Coastline-50k_trimmed.shp"
     )
