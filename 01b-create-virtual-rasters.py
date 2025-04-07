@@ -18,8 +18,8 @@ Key Features:
 Usage:
     python 01b-create-output-virtual-rasters.py --base-dir <PATH_TO_TOP_LEVEL_DIRECTORY>
 
-To reproduce the dataset:
-    python 01b-create-virtual-rasters.py --base-dir data/in-3p
+To reproduce the dataset on HPC:
+    python 01b-create-virtual-rasters.py --base-dir ~/AU_AIMS_S2-comp
 
 
 Dependencies:

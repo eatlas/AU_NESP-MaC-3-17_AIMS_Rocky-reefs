@@ -1,7 +1,9 @@
 """
-
 Running locally with the imagery on a separate drive:
 python 02-extract-training-data.py --imagery-path 'D:\AU_AIMS_MARB-S2-comp_p15\AU_NESP-MaC-3-17_AIMS_Shallow-mask\data\in-3p\AU_AIMS_S2-comp'
+
+Running on HPC:
+python 02-extract-training-data.py --imagery-path ~/AU_AIMS_S2-comp
 """
 import pandas as pd
 import geopandas as gpd
@@ -20,7 +22,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--imagery-path',
     type=str,
-    default='data/in-3p/AU_AIMS_S2-comp',
+    default='~/AU_AIMS_S2-comp',
     help="Base path to the satellite imagery dataset. This expects the directory structure to be from 01a-download-input-data.py."
 )
 args = parser.parse_args()
