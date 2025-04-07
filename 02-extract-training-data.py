@@ -1,10 +1,11 @@
 """
-Running locally with the imagery on a separate drive:
-python 02-extract-training-data.py --imagery-path 'D:\AU_AIMS_MARB-S2-comp_p15\AU_NESP-MaC-3-17_AIMS_Shallow-mask\data\in-3p\AU_AIMS_S2-comp'
-
+Extract pixel values from satellite imagery VRTs at the locations of training data points.
+This script is designed to be run after the training data has been downloaded and the VRTs have been created.
 Running on HPC:
 python 02-extract-training-data.py --imagery-path ~/AU_AIMS_S2-comp
 """
+# Running locally with the imagery on a separate drive:
+# python 02-extract-training-data.py --imagery-path 'D:\AU_AIMS_MARB-S2-comp_p15\AU_NESP-MaC-3-17_AIMS_Shallow-mask\data\in-3p\AU_AIMS_S2-comp'
 import pandas as pd
 import geopandas as gpd
 import rasterio
