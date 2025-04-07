@@ -102,7 +102,6 @@ def run_rf_prediction(tile_id, false_path, true_path, rocky_tif_path, rf, rocky_
             print()  # Newline after progress output.
     return True
 
-
 def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     """
     Postprocess the rocky reef probability GeoTIFF:
@@ -221,123 +220,6 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     print(f"[{current_time}] Shapefile saved to {shapefile_path}")
     return True
 
-
-    
-def postprocess_and_polygonize_dep(rocky_tif_path, shapefile_path, land_gdf):
-    """
-    Postprocess the rocky reef probability GeoTIFF:
-      - Clip non-zero pixel values to [50, 130] and linearly re-scale that range to [1,255].
-      - Apply a 3-pixel median filter using OpenCV.
-      - Apply a morphological closing: dilation (with a round kernel of 3x3) then erosion (same kernel) to fill holes.
-      - Double the resolution using bilinear interpolation.
-      - Apply a threshold of 140 to create a binary mask.
-      - Save the threshold image for debugging purposes.
-      - Convert the binary mask to polygons (splitting multi-part geometries and simplifying them).
-      - Clip the resulting rocky reef polygons by subtracting the pre-processed land mask.
-    The resulting shapefile is saved at shapefile_path.
-    """
-    import cv2  # Ensure OpenCV is imported here if not globally.
-    import rasterio
-    from rasterio.features import shapes
-    from shapely.geometry import shape
-    import geopandas as gpd
-
-    # Read the original GeoTIFF.
-    with rasterio.open(rocky_tif_path) as src:
-        img = src.read(1)  # 8-bit image; 0 = nodata.
-        transform = src.transform
-
-    # Convert image to float32 for processing.
-    img_float = img.astype(np.float32)
-    mask = (img_float > 0)
-
-    # Clip valid pixels to [50,130] and normalize to [1,255].
-    img_clipped = img_float.copy()
-    img_clipped[mask] = np.clip(img_clipped[mask], 50, 130)
-    img_norm = img_clipped.copy()
-    img_norm[mask] = ((img_norm[mask] - 50) / 80) * 254 + 1
-    img_norm[~mask] = 0
-    img_norm = img_norm.astype(np.uint8)
-
-    # Save the threshold image for debugging purposes.
-    #debug_path = rocky_tif_path.replace(".tif", "_before-median.png")
-    #cv2.imwrite(debug_path, img_norm)
-    #print(f"  Debug threshold image saved to {debug_path}")
-    
-    # Apply a 3x3 median filter.
-    img_median = cv2.medianBlur(img_norm, 5)
-    
-    # Save the threshold image for debugging purposes.
-    #debug_path = rocky_tif_path.replace(".tif", "_after-median.png")
-    #cv2.imwrite(debug_path, img_median)
-    #print(f"  Debug threshold image saved to {debug_path}")
-
-    # Create a round (elliptical) kernel
-    # Apply morphological closing: dilate one pixel then erode one pixel.
-    img_closed = cv2.dilate(img_median, 
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)), iterations=1)
-    # Expand by 1 pixel
-    img_closed = cv2.erode(img_closed, 
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)), iterations=1)
-
-    # Double the resolution using bilinear interpolation.
-    height, width = img_closed.shape
-    img_resized = cv2.resize(img_closed, (width*2, height*2), interpolation=cv2.INTER_LINEAR)
-
-    # Apply threshold of 140 to create a binary mask.
-    ret, img_thresh = cv2.threshold(img_resized, 140, 255, cv2.THRESH_BINARY)
-
-    # Save the threshold image for debugging purposes.
-    #debug_path = rocky_tif_path.replace(".tif", "_debug.png")
-    #cv2.imwrite(debug_path, img_thresh)
-    #print(f"  Debug threshold image saved to {debug_path}")
-
-    # Update the affine transform since resolution was doubled.
-    new_transform = rasterio.Affine(transform.a / 2, transform.b, transform.c,
-                                    transform.d, transform.e / 2, transform.f)
-    current_time = datetime.now().strftime("%H:%M:%S")
-    print(f"[{current_time}] Converting to polygons and simplifying")
-    # Extract polygons from the binary image (only for value 255).
-    polys = []
-    for geom, val in shapes(img_thresh, transform=new_transform, mask=(img_thresh==255)):
-        if val == 255:
-            geom_shape = shape(geom)
-            # Split multipolygons into individual polygons.
-            if geom_shape.geom_type == 'MultiPolygon':
-                for poly in geom_shape:
-                    polys.append(poly.simplify(0.00007, preserve_topology=True))
-            elif geom_shape.geom_type == 'Polygon':
-                polys.append(geom_shape.simplify(0.00007, preserve_topology=True))
-                
-    current_time = datetime.now().strftime("%H:%M:%S")
-    if not polys:
-        print("  No rocky reef polygons extracted before land clipping.")
-        return False
-    
-    current_time = datetime.now().strftime("%H:%M:%S")
-    print(f"[{current_time}] Clipping polygons")
-    
-    # Create GeoDataFrame for all reef polygons at once
-    reef_gdf = gpd.GeoDataFrame(geometry=polys, crs="EPSG:4326")
-    
-    print(f"  Performing difference")
-    # Use spatial indexing by calling geopandas.overlay for efficient clipping
-    reef_clipped_gdf = gpd.overlay(reef_gdf, land_gdf, how='difference')
-
-    # Check if any polygons remain after clipping
-    if reef_clipped_gdf.empty:
-        print("No rocky reef polygons remain after land clipping.")
-        return False
-
-    # Save the resulting polygons as shapefile efficiently
-    reef_clipped_gdf['tile_id'] = os.path.basename(shapefile_path)
-    reef_clipped_gdf.to_file(shapefile_path)
-    print(f"  Shapefile saved to {shapefile_path}")
-    return True
-
-
-
-
 def process_tile_tile(tile_file, false_dir, true_files, geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf):
     """
     Process a single tile: if the output shapefile exists, skip.
@@ -374,9 +256,7 @@ def process_tile_tile(tile_file, false_dir, true_files, geotiff_dir, shapefile_d
     else:
         print(f"Tile {tile_id}: Processing complete.")
 
-
 def main():
-
     parser = argparse.ArgumentParser(
         description="Progressively process each tile: apply RF prediction, post-process, and output a shapefile per tile."
     )
@@ -399,10 +279,10 @@ def main():
         default=r'C:\Temp\gis\AU_NESP-MaC-3-17_AIMS_Rocky-reefs'
     )
     parser.add_argument(
-        '--cached-landmask',
+        '--landmask',
         type=str,
         help="Path to the cached (processed) land mask shapefile",
-        default=r'working/05/Coastline-50k_trimmed.shp'
+        default=r'data/in/landmask/Coastline-50k_trimmed.shp'
     )
     args = parser.parse_args()
 
@@ -423,15 +303,15 @@ def main():
     os.makedirs(shapefile_dir, exist_ok=True)
 
     # Load the cached land mask.
-    cached_landmask_path = args.cached_landmask
-    if os.path.exists(cached_landmask_path):
+    landmask_path = args.landmask
+    if os.path.exists(landmask_path):
         print("Loading cached adjusted land mask...")
-        cached_gdf = gpd.read_file(cached_landmask_path)
+        cached_gdf = gpd.read_file(landmask_path)
         # Assume the cached file contains a single geometry.
         land_mask_geom = cached_gdf.geometry.unary_union
     else:
-        print(f"Error: Cached land mask not found at {cached_landmask_path}.")
-        print("Please run the land mask processing script first.")
+        print(f"Error: Land mask not found at {landmask_path}.")
+        print("Please run the land mask processing script first or download the land mask.")
         sys.exit(1)
 
     print("Converting cached land mask to GeoDataFrame...")
@@ -467,18 +347,32 @@ def main():
 
     total_files = len(ordered_false_files)
     print(f"Found {total_files} false-colour files to process.")
-    processed_count = 0
 
-    for i, tile_file in enumerate(ordered_false_files, 1):
+    # Check for SLURM_ARRAY_TASK_ID to determine if we should process a single tile.
+    slurm_task = os.getenv("SLURM_ARRAY_TASK_ID")
+    if slurm_task is not None:
+        try:
+            idx = int(slurm_task)
+        except ValueError:
+            print("Error: SLURM_ARRAY_TASK_ID is not a valid integer.")
+            sys.exit(1)
+        if idx < 0 or idx >= total_files:
+            print(f"Error: SLURM_ARRAY_TASK_ID {idx} is out of bounds (0-{total_files-1}).")
+            sys.exit(1)
+        tile_file = ordered_false_files[idx]
         current_time = datetime.now().strftime("%H:%M:%S")
-        print(f"\n[{current_time}] Processing tile {extract_tile_id(tile_file)} ({i}/{total_files})...")
+        print(f"\n[{current_time}] Processing tile {extract_tile_id(tile_file)} (SLURM_ARRAY_TASK_ID={idx})...")
         process_tile_tile(tile_file, false_dir, true_files, geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf)
-        processed_count += 1
-
-    print(f"\nProcessing complete. {processed_count} tiles processed.")
+    else:
+        processed_count = 0
+        for i, tile_file in enumerate(ordered_false_files, 1):
+            current_time = datetime.now().strftime("%H:%M:%S")
+            print(f"\n[{current_time}] Processing tile {extract_tile_id(tile_file)} ({i}/{total_files})...")
+            process_tile_tile(tile_file, false_dir, true_files, geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf)
+            processed_count += 1
+        print(f"\nProcessing complete. {processed_count} tiles processed.")
 
 if __name__ == '__main__':
     main()
-
 
 
