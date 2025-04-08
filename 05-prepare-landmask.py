@@ -26,10 +26,10 @@ def process_land_mask(original_landmask_path, output_landmask_path):
     land_mask_gdf = gpd.read_file(original_landmask_path)
     # Merge all features into a single geometry.
     land_mask_geom = land_mask_gdf.unary_union
-    # Apply a negative buffer of 0.0005°.
-    land_mask_geom = land_mask_geom.buffer(-0.0005)
-    # Simplify the geometry with a tolerance of 0.0001°.
-    land_mask_geom = land_mask_geom.simplify(0.0001, preserve_topology=True)
+    # Apply a negative buffer of 0.0002°.
+    land_mask_geom = land_mask_geom.buffer(-0.0002)
+    # Simplify the geometry with a tolerance of 0.00005°.
+    land_mask_geom = land_mask_geom.simplify(0.00005, preserve_topology=True)
     # Create a new GeoDataFrame with the adjusted geometry.
     adjusted_gdf = gpd.GeoDataFrame({'geometry': [land_mask_geom]}, crs=land_mask_gdf.crs)
     # Ensure the output directory exists.
