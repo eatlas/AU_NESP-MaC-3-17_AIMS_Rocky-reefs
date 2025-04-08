@@ -67,3 +67,9 @@ The following are the top level libraries needed. These will in turn pull in man
   - scikit-image=0.24.0
   - fiona=1.10.1
   - opencv-python-headless=4.10.0 (installed via pip as conda was causing DLL issues)
+
+## Creating the land mask
+While the land mask can be produced using the `05-prepare-landmask.py` script Python is
+very slow at this process and so we perform the processing in QGIS instead as it is
+at least 20 x faster.
+The script serves as a reference for the steps needed to be processed.
