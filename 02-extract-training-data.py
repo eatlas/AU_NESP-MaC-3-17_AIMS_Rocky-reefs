@@ -33,7 +33,7 @@ args = parser.parse_args()
 imagery_base_path = Path(args.imagery_path)
 
 
-training_shp_path = Path('data/in/training/Training-data.shp')
+training_shp_path = Path('data/in/training/Training-data_V2.shp')
 
 # VRT paths using the imagery base path
 false_color_vrt_path = imagery_base_path / 'low_tide_infrared' / 'NorthernAU.vrt'
