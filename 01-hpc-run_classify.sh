@@ -16,4 +16,4 @@ conda activate rocky-reefs_3-13
 
 # Run the Python script.
 # The script will read the SLURM_ARRAY_TASK_ID from the environment to process a single tile.
-python 06-classify-rocky-reefs.py
+python 06-classify-rocky-reefs.py --geotiff-dir working/rocky-reefs-geotiffs --dataset-path ~/AU_AIMS_S2-comp

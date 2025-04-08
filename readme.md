@@ -93,6 +93,19 @@ The prep script will take approximately an hour because it has to download 60 GB
 imagery. This script skips over any tasks that have already been completed and so it is
 safe to run multiple times. It will only take 30 sec to run if every thing has previously
 been run.
+
+Make sure that the log directory is created:
+```
+mkdir logs
+```
+
+If you hav previously run the script it is probably a good idea to clear the log
+directory before running the script again.
+```
+rm logs\*.out logs\*.err
+```
+
+Now run the classifier, using sbatch to submit the jobs. 
 ```
 sbatch 01-hpc-run_classify.sh
 ```
@@ -102,6 +115,20 @@ After the job has been submitted then the status can be checked with:
 ```
 squeue -u $USER
 ```
+Note the job number. Now check the status of the jobs:
+```
+sacct -j {Job number} --format=JobID,JobName,Partition,State,ExitCode,Elapsed,Start,End
+```
+
+If there is an error then each of the jobs will fail. In that case look in the
+`logs` folder to understand the cause.
+
+To follow along with a process you can use:
+```
+tail -f logs/{Job number}_1.out
+```
+
+
 
 ## Creating the land mask
 While the land mask can be produced using the `05-prepare-landmask.py` script Python is
