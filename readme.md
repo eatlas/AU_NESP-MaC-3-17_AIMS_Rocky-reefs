@@ -68,6 +68,41 @@ The following are the top level libraries needed. These will in turn pull in man
   - fiona=1.10.1
   - opencv-python-headless=4.10.0 (installed via pip as conda was causing DLL issues)
 
+## Running on the HPC
+These instructions are suitable for the AIMS HPC, which may be setup differently to
+other HPCs. Consider these scripts and instructions as a starting point.
+This requires that the HPC have SLURM and conda/anaconda as modules.
+
+Get this script by first running the following command in your terminal:
+```
+git clone https://github.com/eatlas/AU_NESP-MaC-3-17_AIMS_Rocky-reefs
+cd AU_NESP-MaC-3-17_AIMS_Rocky-reefs 
+```
+Move to a directory where the code is, then make the HPC scripts executable
+```
+chmod +x 00-hpc-prep.sh
+chmod +x 01-hpc-run_classify.sh
+```
+The `00-hpc-prep.sh` script downloads all the data and performs all the data preparation.
+`01-hpc-run_classify.sh` runs the classification on each of the satellite images. This is
+what takes a lot of computing. Processing each time takes approximately 10 - 20 min each.
+```
+./00-hpc-prep.sh
+```
+The prep script will take approximately an hour because it has to download 60 GB of satellite 
+imagery. This script skips over any tasks that have already been completed and so it is
+safe to run multiple times. It will only take 30 sec to run if every thing has previously
+been run.
+```
+sbatch 01-hpc-run_classify.sh
+```
+This will run all the tasks, up to 123 parallel tasks.
+
+After the job has been submitted then the status can be checked with:
+```
+squeue -u $USER
+```
+
 ## Creating the land mask
 While the land mask can be produced using the `05-prepare-landmask.py` script Python is
 very slow at this process and so we perform the processing in QGIS instead as it is
