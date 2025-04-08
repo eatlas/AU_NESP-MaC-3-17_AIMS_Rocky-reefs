@@ -106,8 +106,8 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     """
     Postprocess the rocky reef probability GeoTIFF:
       - Clip non-zero pixel values to [50, 130] and linearly re-scale that range to [1,255].
-      - Apply a 3-pixel median filter using OpenCV.
-      - Apply a morphological closing: dilation (with a round kernel of 3x3) then erosion (same kernel) to fill holes.
+      - Apply a 7-pixel median filter using OpenCV.
+      - Apply a morphological closing: dilation (with a round kernel of 7x7) then erosion (same kernel) to fill holes.
       - Double the resolution using bilinear interpolation.
       - Apply a threshold of 140 to create a binary mask.
       - Rasterize the land mask and remove land pixels from the binary mask.
@@ -141,14 +141,13 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     img_norm[~mask] = 0
     img_norm = img_norm.astype(np.uint8)
 
-    # Apply a 3x3 median filter.
-    img_median = cv2.medianBlur(img_norm, 5)
+    # Apply a 7x7 median filter. Use a largish kernel to only keep rocky reefs that are at least 50 m across.
+    img_median = cv2.medianBlur(img_norm, 7)
     
     # Morphological closing: dilate then erode with elliptical kernels.
-    img_closed = cv2.dilate(img_median, 
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)), iterations=1)
-    img_closed = cv2.erode(img_closed, 
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)), iterations=1)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    img_closed = cv2.dilate(img_median, kernel, iterations=1)
+    img_closed = cv2.erode(img_closed, kernel, iterations=1)
 
     # Double the resolution using bilinear interpolation.
     height, width = img_closed.shape
