@@ -32,6 +32,30 @@ COASTLINE_PATH = "data/in-3p/Coast50k_2024/Split/AU_NESP-MaC-3-17_AIMS_Aus-Coast
 OUTPUT_TEMPLATE = "data/out/AU_NESP-MaC-3-17_AIMS_Rocky-reefs_{version}.shp"
 VERSION_FILE = "VERSION.txt"
 
+# Apply negative buffer to identify and remove sliver features
+def remove_slivers_by_buffer(gdf, buffer_distance=-0.0003):
+    """
+    Remove sliver polygons by applying a negative buffer.
+    Features that disappear with the buffer are considered slivers.
+    Returns the original geometries (not buffered) of features that survive.
+    
+    Parameters:
+    - gdf: GeoDataFrame with polygon geometries
+    - buffer_distance: Buffer distance in degrees (negative for shrinking)
+    
+    Returns:
+    - GeoDataFrame with sliver features removed
+    """
+    # Create temporary version with negative buffer applied
+    buffered_gdf = gdf.copy()
+    buffered_gdf['geometry'] = gdf.geometry.buffer(buffer_distance)
+    
+    # Identify features that survived the buffer (not empty)
+    survived_mask = ~buffered_gdf.geometry.is_empty
+    
+    # Return original geometries for features that survived
+    return gdf.loc[survived_mask].copy()
+
 def main():
     parser = argparse.ArgumentParser(
         description="Clean up rocky reef data by applying a manual mask and optionally clipping to the coastline."
@@ -59,7 +83,7 @@ def main():
     if not os.path.exists(output_dir):
         print(f"Output directory '{output_dir}' does not exist. Creating it...")
         os.makedirs(output_dir, exist_ok=True)
-        
+
     # Load raw rocky reef data
     print(f"Loading raw rocky reef data from '{RAW_ROCKY_REEF_PATH}'...")
     try:
@@ -95,6 +119,9 @@ def main():
     raw_reef["geometry"] = raw_reef.geometry.apply(lambda geom: geom.difference(mask_union))
     cleaned_reef = raw_reef[~raw_reef.geometry.is_empty].copy()
 
+    # Remove slivers using the negative buffer approach
+    cleaned_gdf = remove_slivers_by_buffer(cleaned_reef)
+
     # Optionally clip to coastline
     if args.clip:
         print(f"Loading coastline data from '{COASTLINE_PATH}'...")
@@ -112,15 +139,15 @@ def main():
         coastline_union = coastline.unary_union
 
         print("Clipping cleaned rocky reef data to the coastline...")
-        cleaned_reef["geometry"] = cleaned_reef.geometry.apply(lambda geom: geom.intersection(coastline_union))
-        cleaned_reef = cleaned_reef[~cleaned_reef.geometry.is_empty].copy()
+        cleaned_gdf["geometry"] = cleaned_gdf.geometry.apply(lambda geom: geom.intersection(coastline_union))
+        cleaned_gdf = cleaned_gdf[~cleaned_gdf.geometry.is_empty].copy()
     else:
         print("Skipping coastline clipping as per user request.")
 
     # Save the final cleaned data as a shapefile
     print(f"Saving cleaned rocky reef data to '{output_path}'...")
     try:
-        cleaned_reef.to_file(output_path)
+        cleaned_gdf.to_file(output_path)
     except Exception as e:
         print(f"Error saving output shapefile: {e}")
         sys.exit(1)
