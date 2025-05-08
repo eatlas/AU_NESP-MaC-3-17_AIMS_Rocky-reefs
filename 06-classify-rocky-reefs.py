@@ -56,6 +56,8 @@ from shapely.geometry import shape, Polygon, MultiPolygon
 from shapely.ops import unary_union
 import configparser
 
+MIN_FEATURE_AREA = 1600  # Minimum area in square meters for rocky reef polygons
+
 def extract_tile_id(filename):
     """
     Extract the tile ID from various filename patterns.
@@ -289,9 +291,9 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     # Note: Adjust the EPSG code as needed for your study area.
     reef_gdf_metric = reef_gdf.to_crs(epsg=3857)
 
-    # Compute area (in square metres) and filter out features smaller than 900 m².
+    # Compute area (in square metres) and filter out features smaller than MIN_FEATURE_AREA m².
     # This is to limit help remove small artefacts.
-    reef_gdf_metric = reef_gdf_metric[reef_gdf_metric.area >= 900]
+    reef_gdf_metric = reef_gdf_metric[reef_gdf_metric.area >= MIN_FEATURE_AREA]
 
     if reef_gdf_metric.empty:
         print("  No rocky reef polygons remain after area filtering.")
