@@ -9,7 +9,7 @@ config.read('config.ini')
 version = config.get('general', 'version')
 
 # Create an instance of the DataDownloader class
-downloader = DataDownloader(download_path=f"data/{version}in-3p")
+downloader = DataDownloader(download_path=f"data/{version}/in-3p")
 
 print("Downloading source data files. This will take a while ...")
     
@@ -28,7 +28,7 @@ downloader.download_and_unzip(direct_download_url, 'Coast50k_2024', subfolder_na
 # --------------------------------------------------------
 # Input data for the Rocky reefs dataset. This includes training data for the model
 # and land mask.
-downloader.download_path = 'data'
+downloader.download_path = 'data/{version}'
 direct_download_url = f'https://nextcloud.eatlas.org.au/s/QD84aRGoKYs3KtP/download?path=%2F{version}%2F&files=in'
 downloader.download_and_unzip(direct_download_url, 'in', flatten_directory=True)
 
