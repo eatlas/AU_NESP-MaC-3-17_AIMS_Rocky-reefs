@@ -33,7 +33,7 @@ if [ ! -f "$FLAG_FILE" ]; then
     python 01a-download-sentinel2.py --dataset low_tide_infrared --region NorthernAU --output ~/AU_AIMS_S2-comp
     python 01a-download-sentinel2.py --dataset low_tide_true_colour --region GBR --output ~/AU_AIMS_S2-comp
     python 01a-download-sentinel2.py --dataset low_tide_infrared --region GBR --output ~/AU_AIMS_S2-comp
-    python 01b-create-virtual-rasters.py --base-dir ~/AU_AIMS_S2-comp
+    python 01b-create-virtual-rasters.py --base-dir ~/AU_AIMS_S2-comp --combine-regions
     # Create the flag file to indicate the download is complete
     touch "$FLAG_FILE"
 else
