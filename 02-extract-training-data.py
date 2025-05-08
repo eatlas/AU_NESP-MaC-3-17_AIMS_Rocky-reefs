@@ -5,7 +5,7 @@ Running on HPC:
 python 02-extract-training-data.py --imagery-path ~/AU_AIMS_S2-comp
 """
 # Running locally with the imagery on a separate drive:
-# python 02-extract-training-data.py --imagery-path 'D:\AU_AIMS_MARB-S2-comp_p15\AU_NESP-MaC-3-17_AIMS_Shallow-mask\data\in-3p\AU_AIMS_S2-comp'
+# python 02-extract-training-data.py --imagery-path D:\AU_AIMS_S2-comp
 import pandas as pd
 import geopandas as gpd
 import rasterio
@@ -13,6 +13,7 @@ from pathlib import Path
 import os
 import numpy as np # Import numpy for handling nodata potentially
 import argparse
+import configparser
 
 print("Script started...")
 
@@ -32,12 +33,17 @@ args = parser.parse_args()
 # Use the provided imagery path
 imagery_base_path = Path(args.imagery_path)
 
+# Read configuration from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+version = config.get('general', 'version')
 
-training_shp_path = Path('data/in/training/Training-data.shp')
+training_shp_path = Path(f'data/{version}/in/training/Training-data.shp')
 
 # VRT paths using the imagery base path
-false_color_vrt_path = imagery_base_path / 'low_tide_infrared' / 'NorthernAU.vrt'
-true_color_vrt_path = imagery_base_path / 'low_tide_true_colour' / 'NorthernAU.vrt'
+lowtide_false_color_vrt_path = imagery_base_path / 'low_tide_infrared' / 'low_tide_infrared_national.vrt'
+lowtide_true_color_vrt_path = imagery_base_path / 'low_tide_true_colour' / 'low_tide_true_colour_national.vrt'
+alltide_true_color_vrt_path = imagery_base_path / '15th_percentile' / '15th_percentile_national.vrt'
 
 # --- Output file path (relative to the script location) ---
 output_dir = Path('working/training-data')
@@ -177,15 +183,15 @@ def extract_pixel_values(vrt_path, coords_for_sampling, band_names):
 print("Checking raster CRS...")
 raster_crs = None
 # *** Check VRT existence before trying to open ***
-if not false_color_vrt_path.exists():
-    print(f"Error: Cannot determine raster CRS because VRT file not found at {false_color_vrt_path}")
+if not lowtide_false_color_vrt_path.exists():
+    print(f"Error: Cannot determine raster CRS because VRT file not found at {lowtide_false_color_vrt_path}")
     exit()
 try:
-    with rasterio.open(false_color_vrt_path) as src:
+    with rasterio.open(lowtide_false_color_vrt_path) as src:
         raster_crs = src.crs
         print(f"Detected Raster CRS: {raster_crs}")
 except Exception as e:
-    print(f"Could not open {false_color_vrt_path} to determine raster CRS: {e}")
+    print(f"Could not open {lowtide_false_color_vrt_path} to determine raster CRS: {e}")
     exit()
 
 # Compare GeoDataFrame CRS with Raster CRS
@@ -207,21 +213,29 @@ if not coords_for_sampling:
      print("Error: Coordinate list for sampling is empty.")
      exit()
 
-# --- Extract from False Color VRT ---
-fc_band_names = ['S2_B5', 'S2_B8', 'S2_B12']
-fc_extracted_df, fc_crs = extract_pixel_values(false_color_vrt_path, coords_for_sampling, fc_band_names)
-if fc_extracted_df is not None and fc_crs and fc_crs != raster_crs:
-     print(f"Warning: False Color VRT CRS ({fc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
+# --- Extract from Low tide False Color VRT ---
+lt_fc_band_names = ['S2_LT_B5', 'S2_LT_B8', 'S2_LT_B12']
+lt_fc_extracted_df, lt_fc_crs = extract_pixel_values(
+    lowtide_false_color_vrt_path, coords_for_sampling, lt_fc_band_names)
+if lt_fc_extracted_df is not None and lt_fc_crs and lt_fc_crs != raster_crs:
+     print(f"Warning: Low tide False Color VRT CRS ({lt_fc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
 
-# --- Extract from True Color VRT ---
-tc_band_names = ['S2_B2', 'S2_B3', 'S2_B4']
-tc_extracted_df, tc_crs = extract_pixel_values(true_color_vrt_path, coords_for_sampling, tc_band_names)
-if tc_extracted_df is not None and tc_crs and tc_crs != raster_crs:
-     print(f"Warning: True Color VRT CRS ({tc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
+# --- Extract from Low tide True Color VRT ---
+lt_tc_band_names = ['S2_LT_B2', 'S2_LT_B3', 'S2_LT_B4']
+lt_tc_extracted_df, lt_tc_crs = extract_pixel_values(
+    lowtide_true_color_vrt_path, coords_for_sampling, lt_tc_band_names)
+if lt_tc_extracted_df is not None and lt_tc_crs and lt_tc_crs != raster_crs:
+     print(f"Warning: Low tide True Color VRT CRS ({lt_tc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
 
+# --- Extract from All tide True Color VRT ---
+at_tc_band_names = ['S2_AT_B2', 'S2_AT_B3', 'S2_AT_B4']
+at_tc_extracted_df, at_tc_crs = extract_pixel_values(
+    alltide_true_color_vrt_path, coords_for_sampling, at_tc_band_names)
+if at_tc_extracted_df is not None and at_tc_crs and at_tc_crs != raster_crs:
+     print(f"Warning: All tide True Color VRT CRS ({at_tc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
 
 # --- Combine Data ---
-if fc_extracted_df is not None and tc_extracted_df is not None:
+if lt_fc_extracted_df is not None and lt_tc_extracted_df is not None and at_tc_extracted_df is not None:
     print("Combining original data attributes with extracted pixel values...")
 
     # Select desired columns from the original GeoDataFrame (excluding geometry)
@@ -233,14 +247,15 @@ if fc_extracted_df is not None and tc_extracted_df is not None:
     final_df_base = gdf[output_columns].copy()
 
     # Ensure the extracted dataframes have the same index as the original gdf
-    fc_extracted_df.index = final_df_base.index
-    tc_extracted_df.index = final_df_base.index
+    lt_fc_extracted_df.index = final_df_base.index
+    lt_tc_extracted_df.index = final_df_base.index
+    at_tc_extracted_df.index = final_df_base.index
 
     # Concatenate base dataframe with the new pixel value dataframes
-    final_df = pd.concat([final_df_base, fc_extracted_df, tc_extracted_df], axis=1)
+    final_df = pd.concat([final_df_base, lt_fc_extracted_df, lt_tc_extracted_df, at_tc_extracted_df], axis=1)
 
     # Reorder columns for clarity (optional)
-    cols_order = output_columns + fc_band_names + tc_band_names
+    cols_order = output_columns + lt_fc_band_names + lt_tc_band_names + at_tc_band_names
     # Ensure all columns actually exist before trying to reorder
     cols_order = [col for col in cols_order if col in final_df.columns]
     final_df = final_df[cols_order]
@@ -250,7 +265,7 @@ if fc_extracted_df is not None and tc_extracted_df is not None:
     print(f"Saving combined data to: {output_csv_path}")
     try:
         # Drop rows where *all* extracted pixel values are NaN (optional)
-        all_band_cols = fc_band_names + tc_band_names
+        all_band_cols = lt_fc_band_names + lt_tc_band_names + at_tc_band_names
         # Filter band cols that actually exist in the dataframe
         all_band_cols = [col for col in all_band_cols if col in final_df.columns]
         if all_band_cols: # Only drop if there are band columns to check
