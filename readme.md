@@ -12,6 +12,8 @@ The classification included:
 
 The dataset focuses on extracting the rocky reefs, and primarily focused only on the intertidal rocky rocks. Subtidal rocky reefs overlap in the colour space with coral reefs and so can only be reliably distinguished by texture and context. For this we rely on manual mapping. The shallow intertidal rocky reefs have a relatively strong colour signature, particularly in the far red and infrared bands. This makes using pixel based classification effective and reasonably reliable.
 
+While we collected training data for the other classifications this was mearly to allow better characterisation of the elements that were not being mapped. The training sampling points were not randomly distributed, but were chosed progressively across the land and seascape to act as representative samples that would be useful for the classifier to distinguish the features of interest. There were several rounds of developing training data, followed by prediction, review of the outputs, then additional training data to cover off on conditions where the model was not performing well. The training data was somewhat manually adjusted to minimise the number of false positives. We found for example that including subtidal rocky reef samples led to many false positives on coral reefs, due to the similar colour signatures. We therefore didn't try to classify these areas, primarily focusing the intertidal rocky reef from other areas. Another slight distortion of the training data was the model was generating significant false positives for rocky reefs at the edges of mangrove areas. Since we didn't have a classification for mangroves, these areas were tagged as sediment.
+
 To ensure the output polygons were as clean as possible we used the following post prediction processing:
 1. We predicted probability instead of classification to obtain a continuously variable estimate of the rockiness of the terrain. This helps with the post smoothing process.
 2. We apply a level adjustment to trim off values below and above a given threshold. This ensures that their noise doesn't contribute to subsequent processing.
@@ -25,6 +27,8 @@ without loosing too much detail.
 9. We apply a manual cleanup mask to remove areas where the modelling is adding false features. These typically occur in cloudy areas, or those with very high sunglint, in mangrove areas and along river banks.
 10. We then futher clean up the data by removing any sliver features, by applying a small negative buffer to the features to test their width. If the feature disappears with the negative buffer then the original feature is removed from the dataset. 
 
+## Training process
+An initial set of training samples were digitised for a region, approximately 1000 points, then the classification was applied to a subset of the imagery (8 scenes in the GBR and 13 scenes in north west Australia). Training points were then places on areas where the classification was in error. These locations were typically also checked against Google Earth imagery, where there was any doubt on whether the location was a rocky reef or not. The historic imagery feature was used to find the best low tide imagery. In most cases the corrections were predominantly sediment areas (that dry out considerably) that were misclassified as rocky reef.
 
 ### Requirements
 - **Python**: Version 3.9 or higher. The scripts have been tested on Python 3.9 and 3.11.
