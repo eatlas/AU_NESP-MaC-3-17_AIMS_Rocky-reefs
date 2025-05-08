@@ -14,12 +14,12 @@ is not used in the Shallow mask mapping.
 
 To reproduce this dataset:
 Note: The low_tide_infrared imagery is not yet used in version 1-1 of this dataset.
-python 01-download-sentinel2.py --dataset 15th_percentile --region NorthernAU
-python 01-download-sentinel2.py --dataset low_tide_true_colour --region NorthernAU
-python 01-download-sentinel2.py --dataset low_tide_infrared --region NorthernAU
-python 01-download-sentinel2.py --dataset 15th_percentile --region GBR
-python 01-download-sentinel2.py --dataset low_tide_true_colour --region GBR
-python 01-download-sentinel2.py --dataset low_tide_infrared --region GBR
+python 01-download-sentinel2.py --dataset 15th_percentile --region NorthernAU --output ~/AU_AIMS_S2-comp
+python 01-download-sentinel2.py --dataset low_tide_true_colour --region NorthernAU --output ~/AU_AIMS_S2-comp
+python 01-download-sentinel2.py --dataset low_tide_infrared --region NorthernAU --output ~/AU_AIMS_S2-comp
+python 01-download-sentinel2.py --dataset 15th_percentile --region GBR --output ~/AU_AIMS_S2-comp
+python 01-download-sentinel2.py --dataset low_tide_true_colour --region GBR --output ~/AU_AIMS_S2-comp
+python 01-download-sentinel2.py --dataset low_tide_infrared --region GBR --output ~/AU_AIMS_S2-comp
 
 Single Tile Demo Run: (Takes approximately 1 min per tile)
 python 01-download-sentinel2.py --dataset 15th_percentile --region GBR --tiles 55KDA
