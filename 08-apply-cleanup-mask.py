@@ -25,12 +25,17 @@ import os
 import geopandas as gpd
 from shapely.ops import unary_union
 
+# Read configuration from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
+version = config.get('general', 'version')
+
 # Constants for file paths
 RAW_ROCKY_REEF_PATH = "working/07/raw-rocky-reef.shp"
-CLEAN_UP_MASK_PATH = "data/in/cleanup/Rocky-reef-cleanup-mask.shp"
-COASTLINE_PATH = "data/in-3p/Coast50k_2024/Split/AU_NESP-MaC-3-17_AIMS_Aus-Coastline-50k_2024_V1-1_split.shp"
-OUTPUT_TEMPLATE = "data/out/AU_NESP-MaC-3-17_AIMS_Rocky-reefs_{version}.shp"
-VERSION_FILE = "VERSION.txt"
+CLEAN_UP_MASK_PATH = f"data/{version}/in/cleanup/Rocky-reef-cleanup-mask.shp"
+COASTLINE_PATH = f"data/{version}/in-3p/Coast50k_2024/Split/AU_NESP-MaC-3-17_AIMS_Aus-Coastline-50k_2024_V1-1_split.shp"
+OUTPUT_TEMPLATE = f"data/out/AU_NESP-MaC-3-17_AIMS_Rocky-reefs_{version}.shp"
+
 
 # Apply negative buffer to identify and remove sliver features
 def remove_slivers_by_buffer(gdf, buffer_distance=-0.0003):
@@ -65,15 +70,6 @@ def main():
         help="Enable clipping of the cleaned rocky reef data to the high-resolution coastline."
     )
     args = parser.parse_args()
-
-    # Read version number from VERSION.txt
-    print(f"Reading version from '{VERSION_FILE}'...")
-    try:
-        with open(VERSION_FILE, "r") as f:
-            version = f.read().strip()
-    except Exception as e:
-        print(f"Error reading version from '{VERSION_FILE}': {e}")
-        sys.exit(1)
     
     output_path = OUTPUT_TEMPLATE.format(version=version)
     print(f"Output will be saved to '{output_path}'")
