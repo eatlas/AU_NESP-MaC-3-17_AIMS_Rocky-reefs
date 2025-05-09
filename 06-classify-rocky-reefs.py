@@ -44,9 +44,8 @@ Usage:
 
 Example:
     python 06-classify-rocky-reefs.py --priority-tiles "51KVB,51KWB,51LWC,51LXC,51LXD,51LYD,51LZE,52LCK,52LEK,52LGN,53LPH,53LPE,53LPC" --regions NorthernAU
-    python 06-classify-rocky-reefs.py --priority-tiles "56KKA,55KFT,55KDV,55LLC,54LYM,54LXP" --regions GBR
-    python 06-classify-rocky-reefs.py --priority-tiles "51KVB,51KWB,51LWC,51LXC,51LXD,51LYD,51LZE,52LCK,52LEK,52LGN,53LPH,53LPE,53LPC,56KKA,55KFT,55KDV,55LLC,54LYM,54LXP" --regions NorthernAU,GBR
-
+    python 06-classify-rocky-reefs.py --priority-tiles "56KKA,55KFT,55KDV,55LCC,54LYM,56KLU" --regions GBR
+ 
     Run all regions with no priority tiles:
     python 06-classify-rocky-reefs.py --regions NorthernAU,GBR
 
@@ -72,6 +71,7 @@ import geopandas as gpd
 from shapely.geometry import shape, Polygon, MultiPolygon
 from shapely.ops import unary_union
 import configparser
+import concurrent.futures
 
 MIN_FEATURE_AREA = 1600  # Minimum area in square meters for rocky reef polygons
 LOW_TIDE_INFRARED_FOLDER_NAME = 'low_tide_infrared'
@@ -125,7 +125,6 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
     The prediction is performed block-by-block.
     The probability (0-1) is scaled to 1-255 (with 0 reserved for nodata).
     """
-    print(f"  Running RF prediction for tile {tile_id}...")
     with rasterio.open(lt_false_path) as lt_false_src, \
             rasterio.open(lt_true_path) as lt_true_src, \
             rasterio.open(at_true_path) as at_true_src:
@@ -149,10 +148,11 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
                 print(f"    No block windows found for tile {tile_id}.")
                 return False
 
-            # Simple GDAL-like progress indicator (one marker per percent).
+            # Parallel-friendly progress reporting - report on separate lines
             block_counter = 0
-            last_percent = 0
-            print("  Progress: 0", end='', flush=True)
+            last_percent = -2  # Start at -2 so 0% gets reported
+            print(f"[{nowstr()}] Tile {tile_id}: Starting prediction (0% complete)")
+            
             # Get nodata values for later.
             lt_false_nodata = lt_false_src.nodata
             lt_true_nodata = lt_true_src.nodata
@@ -161,12 +161,10 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
             for ji, window in blocks:
                 block_counter += 1
                 current_percent = int((block_counter / num_blocks) * 100)
-                if current_percent > last_percent:
-                    for p in range(last_percent + 1, current_percent + 1):
-                        if p % 10 == 0:
-                            print(f"{p}", end='', flush=True)
-                        else:
-                            print('.', end='', flush=True)
+                
+                # Report progress every 2 percent or at 100%
+                if current_percent >= last_percent + 2 or current_percent == 100:
+                    print(f"[{nowstr()}] Tile {tile_id}: {current_percent}% complete ({block_counter}/{num_blocks} blocks)")
                     last_percent = current_percent
 
                 # Read the block from both images.
@@ -207,10 +205,17 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
                 scaled[nodata_mask] = 0
 
                 dst.write(scaled, window=window, indexes=1)
-            print()  # Newline after progress output.
+            
+            print(f"  Tile {tile_id}: Prediction complete")
     return True
 
-def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
+def nowstr():
+    """
+    Returns the current time as a formatted string for printing progress.
+    """
+    return datetime.now().strftime("%H:%M:%S")
+
+def postprocess_and_polygonize(tile_id, rocky_tif_path, shapefile_path, land_gdf):
     """
     Postprocess the rocky reef probability GeoTIFF:
       - Clip non-zero pixel values to [50, 130] and linearly re-scale that range to [1,255].
@@ -276,8 +281,7 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     new_transform = rasterio.Affine(transform.a / 2, transform.b, transform.c,
                                     transform.d, transform.e / 2, transform.f)
 
-    current_time = datetime.now().strftime("%H:%M:%S")
-    print(f"[{current_time}] Rasterizing land mask and applying raster space clipping")
+    print(f"[{nowstr()}] Tile {tile_id} Rasterizing land mask and applying raster space clipping")
 
     # Rasterize the land geometries to the same grid as img_thresh.
     # It is faster to perform a rough clipping in raster space than in vector space.
@@ -295,8 +299,7 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     # Remove rocky reef pixels that fall on land.
     img_thresh[land_mask == 255] = 0
 
-    current_time = datetime.now().strftime("%H:%M:%S")
-    print(f"[{current_time}] Converting raster mask to polygons")
+    print(f"[{nowstr()}] Tile {tile_id} Converting raster mask to polygons")
 
     # Extract polygons from the modified binary image (only for value 255).
     # Apply simplification that is close to 1 pixel in size, this helps remove
@@ -331,7 +334,7 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
     reef_gdf_metric = reef_gdf_metric[reef_gdf_metric.area >= MIN_FEATURE_AREA]
 
     if reef_gdf_metric.empty:
-        print("  No rocky reef polygons remain after area filtering.")
+        print(f"[{nowstr()}] Tile {tile_id} No rocky reef polygons remain after area filtering.")
         return False
 
     # Reproject back to EPSG:4326.
@@ -339,8 +342,7 @@ def postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf):
 
     # Save the resulting polygons as a shapefile.
     reef_gdf.to_file(shapefile_path)
-    current_time = datetime.now().strftime("%H:%M:%S")
-    print(f"[{current_time}] Shapefile saved to {shapefile_path}")
+    print(f"[{nowstr()}] Tile {tile_id} Shapefile saved to {shapefile_path}")
     return True
 
 def collect_tiles_for_regions(regions, dataset_path, priority_tiles):
@@ -438,7 +440,7 @@ def process_tile_tile(tile_id, lt_false_file, lt_true_file, at_true_file, geotif
     """
     shapefile_path = os.path.join(shapefile_dir, f"RockyReef_{region}_{tile_id}.shp")
     if os.path.exists(shapefile_path):
-        print(f"Tile {tile_id} ({region}): shapefile already exists. Skipping tile.")
+        print(f"[{nowstr()}] Tile {tile_id} ({region}): shapefile already exists. Skipping tile.")
         return
     
     rocky_tif_path = os.path.join(geotiff_dir, f"Classified-{region}_{tile_id}.tif")
@@ -447,18 +449,53 @@ def process_tile_tile(tile_id, lt_false_file, lt_true_file, at_true_file, geotif
     if not os.path.exists(rocky_tif_path):
         success = run_rf_prediction(tile_id, lt_false_file, lt_true_file, at_true_file, rocky_tif_path, rf, rocky_idx)
         if not success:
-            print(f"Tile {tile_id} ({region}): RF prediction failed. Skipping tile.")
+            print(f"[{nowstr()}] Tile {tile_id} ({region}): RF prediction failed. Skipping tile.")
             return
     else:
-        print(f"Tile {tile_id} ({region}): Prediction GeoTIFF already exists, skipping RF prediction.")
+        print(f"[{nowstr()}] Tile {tile_id} ({region}): Prediction GeoTIFF already exists, skipping RF prediction.")
 
     # Postprocess the prediction GeoTIFF and polygonize, clipping with the land mask.
-    success = postprocess_and_polygonize(rocky_tif_path, shapefile_path, land_gdf)
+    success = postprocess_and_polygonize(tile_id, rocky_tif_path, shapefile_path, land_gdf)
     if not success:
-        print(f"Tile {tile_id} ({region}): Post-processing failed or no polygons extracted.")
+        print(f"[{nowstr()}] Tile {tile_id} ({region}): Post-processing failed or no polygons extracted.")
     else:
-        print(f"Tile {tile_id} ({region}): Processing complete.")
+        print(f"[{nowstr()}] Tile {tile_id} ({region}): Processing complete.")
 
+
+# Add this function at the module level (outside of any other functions)
+def process_tile_worker(args):
+    """
+    Process a single tile in a worker process.
+    
+    Args:
+        args: Tuple containing (
+            i: index,
+            tile_id: tile identifier,
+            lt_false_file: path to low tide false-color file,
+            lt_true_file: path to low tide true-color file,
+            at_true_file: path to all tide true-color file,
+            geotiff_dir: directory for saving GeoTIFF outputs,
+            shapefile_dir: directory for saving shapefile outputs,
+            rf: trained random forest model,
+            rocky_idx: index of Rocky reef class,
+            land_gdf: land geometry dataframe,
+            region: region name,
+            total_files: total number of files to process
+        )
+    
+    Returns:
+        1 if processing was successful, 0 otherwise.
+    """
+    i, tile_id, lt_false_file, lt_true_file, at_true_file, geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf, region, total_files = args
+    
+    print(f"\n[{nowstr()}] Processing tile {tile_id} ({i+1}/{total_files})...")
+    try:
+        process_tile_tile(tile_id, lt_false_file, lt_true_file, at_true_file, 
+                        geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf, region)
+        return 1
+    except Exception as e:
+        print(f"EXCEPTION: Error processing tile {tile_id}: {e}")
+        return 0
 
 def main():
 
@@ -509,6 +546,13 @@ def main():
         '--binary-classifier',
         action='store_true',
         help="Use the binary classifier model instead of the multi-class model"
+    )
+
+    parser.add_argument(
+        '--parallel',
+        type=int,
+        help="Number of parallel processes to use (default: 1 for sequential processing)",
+        default=1
     )
     
     args = parser.parse_args()
@@ -599,9 +643,10 @@ def main():
     
 
     
-    # Check for SLURM_ARRAY_TASK_ID to determine if we should process a single tile
+    # Check if SLURM_ARRAY_TASK_ID is set (for SLURM job array processing)
     slurm_task = os.getenv("SLURM_ARRAY_TASK_ID")
     if slurm_task is not None:
+        # Existing SLURM handling code
         try:
             idx = int(slurm_task)
         except ValueError:
@@ -613,21 +658,52 @@ def main():
             return 0
             
         tile_id = tile_ids[idx]
-        current_time = datetime.now().strftime("%H:%M:%S")
-        print(f"\n[{current_time}] Processing tile {tile_id} (SLURM_ARRAY_TASK_ID={idx})...")
+        print(f"\n[{nowstr()}] Processing tile {tile_id} (SLURM_ARRAY_TASK_ID={idx})...")
         process_tile_tile(tile_id, lt_false_files[idx], lt_true_files[idx], at_true_files[idx], 
                           geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf, tile_regions[idx])
         return 1
     else:
-        processed_count = 0
-        for i, tile_id in enumerate(tile_ids, 1):
-            current_time = datetime.now().strftime("%H:%M:%S")
-            print(f"\n[{current_time}] Processing tile {tile_id} ({i}/{total_files})...")
-            process_tile_tile(tile_id, lt_false_files[i], lt_true_files[i], at_true_files[i], 
-                              geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf, tile_regions[i])
-            processed_count += 1
-        
-    print(f"\nProcessing complete.")
+        # Check if parallel processing is requested
+        num_workers = args.parallel
+        if num_workers > 1:
+            print(f"Processing {total_files} tiles in parallel using {num_workers} workers")
+            processed_count = 0
+            
+            # Prepare task arguments for each tile
+            worker_args = []
+            for i in range(total_files):
+                worker_args.append((
+                    i,                      # Index
+                    tile_ids[i],            # Tile ID
+                    lt_false_files[i],      # Path to low tide false-color file
+                    lt_true_files[i],       # Path to low tide true-color file
+                    at_true_files[i],       # Path to all tide true-color file
+                    geotiff_dir,            # Directory for GeoTIFF outputs
+                    shapefile_dir,          # Directory for shapefile outputs
+                    rf,                     # Trained random forest model
+                    rocky_idx,              # Index of Rocky reef class
+                    land_gdf,               # Land geometry dataframe
+                    tile_regions[i],        # Region name
+                    total_files             # Total number of files to process
+                ))
+            
+            # Process tiles in parallel
+            with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+                # Map the worker function to the argument list
+                results = list(executor.map(process_tile_worker, worker_args))
+                processed_count = sum(results)  # Count successful completions
+                
+            print(f"\nProcessing complete. Successfully processed {processed_count} of {total_files} tiles.")
+        else:
+            # Existing sequential processing code
+            processed_count = 0
+            for i, tile_id in enumerate(tile_ids):
+                print(f"\n[{nowstr()}] ------ Processing tile {tile_id} ({i+1}/{total_files}) ------")
+                process_tile_tile(tile_id, lt_false_files[i], lt_true_files[i], at_true_files[i], 
+                                  geotiff_dir, shapefile_dir, rf, rocky_idx, land_gdf, tile_regions[i])
+                processed_count += 1
+            
+            print(f"\nProcessing complete.")
 
 if __name__ == '__main__':
     main()
