@@ -24,6 +24,7 @@ import sys
 import os
 import geopandas as gpd
 from shapely.ops import unary_union
+import configparser
 
 # Read configuration from config.ini
 config = configparser.ConfigParser()
