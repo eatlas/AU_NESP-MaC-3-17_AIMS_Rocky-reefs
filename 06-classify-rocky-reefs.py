@@ -150,7 +150,7 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
 
             # Parallel-friendly progress reporting - report on separate lines
             block_counter = 0
-            last_percent = -2  # Start at -2 so 0% gets reported
+            last_percent = -10  # Start at -10 so 0% gets reported
             print(f"[{nowstr()}] Tile {tile_id}: Starting prediction (0% complete)")
             
             # Get nodata values for later.
@@ -162,8 +162,8 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
                 block_counter += 1
                 current_percent = int((block_counter / num_blocks) * 100)
                 
-                # Report progress every 2 percent or at 100%
-                if current_percent >= last_percent + 2 or current_percent == 100:
+                # Report progress every 10 percent or at 100%
+                if current_percent >= last_percent + 10 or current_percent == 100:
                     print(f"[{nowstr()}] Tile {tile_id}: {current_percent}% complete ({block_counter}/{num_blocks} blocks)")
                     last_percent = current_percent
 
