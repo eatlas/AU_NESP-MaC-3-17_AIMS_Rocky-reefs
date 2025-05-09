@@ -18,6 +18,9 @@ The version and sigma are used to determine the filenames of the input and outpu
 
 The following are the command lines used to reproduce the full dataset:
 python 07-merge-scenes.py
+
+Merge the binary classifier results:
+python 07-merge-scenes.py --binary-classifier
 """
 
 def main():
@@ -30,9 +33,16 @@ def main():
         action='store_true',
         help="Pickup the files from the binary classifier instead of the multi-class model"
     )
+    args = parser.parse_args()
 
-    input_path = "working/06"
-    output_dir = "working/07"
+    # Set the input path based on the classifier type
+    if args.binary_classifier:
+        input_path = "working/06-binary"
+        output_dir = "working/07-binary"
+    else:
+        input_path = "working/06-multi"
+        output_dir = "working/07-multi"
+
     output_file = os.path.join(output_dir, f"raw-rocky-reef.shp")
 
     # Create output directory if it doesn't exist
