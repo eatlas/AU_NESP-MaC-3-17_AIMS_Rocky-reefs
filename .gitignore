@@ -3,3 +3,4 @@ working/
 working-data/
 __pycache__
 deprecated/
+.DS_store

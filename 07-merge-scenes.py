@@ -45,8 +45,7 @@ def main():
         type=str,
         help="Weight of the rocky reef class in the model. Must be one of the values calculated in 04-train-random-forest.py",
         choices=["1.0", "1.5", "2.0", "2.5", "3.0"],
-        default="2.0",
-        default=1
+        default="2.0"
     )
 
     args = parser.parse_args()
