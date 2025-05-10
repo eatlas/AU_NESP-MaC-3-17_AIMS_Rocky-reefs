@@ -20,7 +20,7 @@ Key Algorithms:
        - Threshold at 140 to create binary mask
        - Rasterize land mask and remove land pixels
        - Vectorize to polygons with topology-preserving simplification
-       - Filter by area (minimum 900 m²)
+       - Filter by area (minimum 1600 m²)
        
     3. Region & Tile Processing:
        - Processes multiple geographic regions (NorthernAU, GBR)
@@ -91,6 +91,8 @@ MULTI_ENCODER_PATH = 'working/training-data/classes_mapping_multiclass_w{weight}
 BINARY_MODEL_PATH = 'working/training-data/random_forest_model_binary_w{weight}.pkl'
 BINARY_ENCODER_PATH = 'working/training-data/classes_mapping_binary_w{weight}.pkl'
 
+REPORT_STEP_PERCENT = 25
+
 def extract_tile_id(filename):
     """
     Extract the tile ID from various filename patterns using regex.
@@ -150,8 +152,7 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
 
             # Parallel-friendly progress reporting - report on separate lines
             block_counter = 0
-            last_percent = -10  # Start at -10 so 0% gets reported
-            print(f"[{nowstr()}] Tile {tile_id}: Starting prediction (0% complete)")
+            last_percent = -REPORT_STEP_PERCENT  # Start negative so 0% gets reported
             
             # Get nodata values for later.
             lt_false_nodata = lt_false_src.nodata
@@ -162,8 +163,8 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
                 block_counter += 1
                 current_percent = int((block_counter / num_blocks) * 100)
                 
-                # Report progress every 10 percent or at 100%
-                if current_percent >= last_percent + 10 or current_percent == 100:
+                # Report progress every REPORT_STEP_PERCENT percent or at 100%
+                if current_percent >= last_percent + REPORT_STEP_PERCENT or current_percent == 100:
                     print(f"[{nowstr()}] Tile {tile_id}: {current_percent}% complete ({block_counter}/{num_blocks} blocks)")
                     last_percent = current_percent
 
@@ -206,7 +207,6 @@ def run_rf_prediction(tile_id, lt_false_path, lt_true_path, at_true_path, rocky_
 
                 dst.write(scaled, window=window, indexes=1)
             
-            print(f"  Tile {tile_id}: Prediction complete")
     return True
 
 def nowstr():
@@ -281,8 +281,6 @@ def postprocess_and_polygonize(tile_id, rocky_tif_path, shapefile_path, land_gdf
     new_transform = rasterio.Affine(transform.a / 2, transform.b, transform.c,
                                     transform.d, transform.e / 2, transform.f)
 
-    print(f"[{nowstr()}] Tile {tile_id} Rasterizing land mask and applying raster space clipping")
-
     # Rasterize the land geometries to the same grid as img_thresh.
     # It is faster to perform a rough clipping in raster space than in vector space.
     # Since out the land mask we use is shrunk at little any edge effects in
@@ -298,8 +296,6 @@ def postprocess_and_polygonize(tile_id, rocky_tif_path, shapefile_path, land_gdf
 
     # Remove rocky reef pixels that fall on land.
     img_thresh[land_mask == 255] = 0
-
-    print(f"[{nowstr()}] Tile {tile_id} Converting raster mask to polygons")
 
     # Extract polygons from the modified binary image (only for value 255).
     # Apply simplification that is close to 1 pixel in size, this helps remove
