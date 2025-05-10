@@ -32,7 +32,7 @@ config.read('config.ini')
 version = config.get('general', 'version')
 
 # Constants for file paths
-RAW_ROCKY_REEF_PATH = "working/07/raw-rocky-reef.shp"
+RAW_ROCKY_REEF_FILE = "raw-rocky-reef.shp"
 CLEAN_UP_MASK_PATH = f"data/{version}/in/cleanup/Rocky-reef-cleanup-mask.shp"
 COASTLINE_PATH = f"data/{version}/in-3p/Coast50k_2024/Split/AU_NESP-MaC-3-17_AIMS_Aus-Coastline-50k_2024_V1-1_split.shp"
 OUTPUT_TEMPLATE = f"data/out/AU_NESP-MaC-3-17_AIMS_Rocky-reefs_{version}.shp"
@@ -71,7 +71,22 @@ def main():
         help="Enable clipping of the cleaned rocky reef data to the high-resolution coastline."
     )
     args = parser.parse_args()
+
+    parser.add_argument(
+        '--binary-classifier',
+        action='store_true',
+        help="Pickup the files from the binary classifier instead of the multi-class model"
+    )
+    args = parser.parse_args()
+
+    # Set the input path based on the classifier type
+    if args.binary_classifier:
+        output_dir = "working/07-binary"
+    else:
+        output_dir = "working/07-multi"
     
+    raw_rocky_reef_path = os.path.join(output_dir, RAW_ROCKY_REEF_FILE)
+
     output_path = OUTPUT_TEMPLATE.format(version=version)
     print(f"Output will be saved to '{output_path}'")
 
@@ -82,11 +97,11 @@ def main():
         os.makedirs(output_dir, exist_ok=True)
 
     # Load raw rocky reef data
-    print(f"Loading raw rocky reef data from '{RAW_ROCKY_REEF_PATH}'...")
+    print(f"Loading raw rocky reef data from '{raw_rocky_reef_path}'...")
     try:
-        raw_reef = gpd.read_file(RAW_ROCKY_REEF_PATH)
+        raw_reef = gpd.read_file(raw_rocky_reef_path)
     except Exception as e:
-        print(f"Error loading raw rocky reef data from '{RAW_ROCKY_REEF_PATH}': {e}. "
+        print(f"Error loading raw rocky reef data from '{raw_rocky_reef_path}': {e}. "
               "Please ensure that the '07-merge-scenes.py' script has been run.")
         sys.exit(1)
 
