@@ -37,6 +37,8 @@ CLEAN_UP_MASK_PATH = f"data/{version}/in/cleanup/Rocky-reef-cleanup-mask.shp"
 COASTLINE_PATH = f"data/{version}/in-3p/Coast50k_2024/Split/AU_NESP-MaC-3-17_AIMS_Aus-Coastline-50k_2024_V1-1_split.shp"
 OUTPUT_TEMPLATE = f"data/out/AU_NESP-MaC-3-17_AIMS_Rocky-reefs_{version}.shp"
 
+MULTI_IN_DIR = 'working/07-multi_w{weight}'
+BINARY_IN_DIR = 'working/07-binary_w{weight}'
 
 # Apply negative buffer to identify and remove sliver features
 def remove_slivers_by_buffer(gdf, buffer_distance=-0.0003):
@@ -77,13 +79,25 @@ def main():
         action='store_true',
         help="Pickup the files from the binary classifier instead of the multi-class model"
     )
+
+    parser.add_argument(
+        '--weight',
+        type=str,
+        help="Weight of the rocky reef class in the model. Must be one of the values calculated in 04-train-random-forest.py",
+        choices=["1.0", "1.5", "2.0", "2.5", "3.0"],
+        default="2.0",
+        default=1
+    )
+
     args = parser.parse_args()
+
+    weight = args.weight
 
     # Set the input path based on the classifier type
     if args.binary_classifier:
-        output_dir = "working/07-binary"
+        output_dir = BINARY_IN_DIR.format(weight=weight)
     else:
-        output_dir = "working/07-multi"
+        output_dir = MULTI_IN_DIR.format(weight=weight)
     
     raw_rocky_reef_path = os.path.join(output_dir, RAW_ROCKY_REEF_FILE)
 

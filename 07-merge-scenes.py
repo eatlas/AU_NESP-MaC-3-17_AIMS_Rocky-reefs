@@ -22,6 +22,12 @@ python 07-merge-scenes.py
 Merge the binary classifier results:
 python 07-merge-scenes.py --binary-classifier
 """
+# Directory for saving the generated rocky reef shapefiles for each tile.
+MULTI_SHAPEFILE_DIR = 'working/06-multi_w{weight}'
+BINARY_SHAPEFILE_DIR = 'working/06-binary_w{weight}'
+
+MULTI_OUT_DIR = 'working/07-multi_w{weight}'
+BINARY_OUT_DIR = 'working/07-binary_w{weight}'
 
 def main():
     parser = argparse.ArgumentParser(
@@ -33,15 +39,27 @@ def main():
         action='store_true',
         help="Pickup the files from the binary classifier instead of the multi-class model"
     )
+
+    parser.add_argument(
+        '--weight',
+        type=str,
+        help="Weight of the rocky reef class in the model. Must be one of the values calculated in 04-train-random-forest.py",
+        choices=["1.0", "1.5", "2.0", "2.5", "3.0"],
+        default="2.0",
+        default=1
+    )
+
     args = parser.parse_args()
+
+    weight = args.weight
 
     # Set the input path based on the classifier type
     if args.binary_classifier:
-        input_path = "working/06-binary"
-        output_dir = "working/07-binary"
+        input_path = BINARY_SHAPEFILE_DIR.format(weight=weight)
+        output_dir = BINARY_OUT_DIR.format(weight=weight)
     else:
-        input_path = "working/06-multi"
-        output_dir = "working/07-multi"
+        input_path = MULTI_SHAPEFILE_DIR.format(weight=weight)
+        output_dir = MULTI_OUT_DIR.format(weight=weight)
 
     output_file = os.path.join(output_dir, f"raw-rocky-reef.shp")
 
