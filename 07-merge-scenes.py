@@ -102,9 +102,47 @@ def main():
         for i in range(0, len(gdf_list), 2):
             if i + 1 < len(gdf_list):
                 print(f"  Dissolving pair: {i} and {i+1}")
-                merged_gdf = pd.concat([gdf_list[i], gdf_list[i+1]], ignore_index=True)
-                dissolved = merged_gdf.dissolve()
-                next_level.append(dissolved)
+                try:
+                    # Validate and repair geometries before merging
+                    for idx, gdf in enumerate([gdf_list[i], gdf_list[i+1]]):
+                        # Reset index to avoid "level_0 already exists" errors
+                        gdf.reset_index(drop=True, inplace=True)
+                        
+                        # Check for invalid geometries
+                        invalid_mask = ~gdf.geometry.is_valid
+                        if invalid_mask.any():
+                            print(f"    Repairing {invalid_mask.sum()} invalid geometries in dataframe {i+idx}")
+                            # Apply buffer(0) to repair
+                            gdf.loc[invalid_mask, 'geometry'] = gdf.loc[invalid_mask, 'geometry'].buffer(0)
+                    
+                    # Merge and dissolve with a safer method
+                    merged_gdf = pd.concat([gdf_list[i], gdf_list[i+1]], ignore_index=True)
+                    
+                    # Try an alternative approach to dissolve that handles index issues
+                    try:
+                        # Method 1: Use union_all() directly 
+                        geometry = merged_gdf.geometry.union_all()
+                        dissolved = gpd.GeoDataFrame(geometry=[geometry], crs=merged_gdf.crs)
+                    except Exception as e:
+                        print(f"    Falling back to standard dissolve: {str(e)}")
+                        # Method 2: Regular dissolve with explicit index handling
+                        # Drop any existing level_0 column if it exists
+                        if 'level_0' in merged_gdf.columns:
+                            merged_gdf = merged_gdf.drop('level_0', axis=1)
+                        # Use dissolve with explicit parameters
+                        dissolved = merged_gdf.dissolve(by=None, aggfunc='first', as_index=False)
+                    
+                    # Ensure the result is valid
+                    if not dissolved.geometry.is_valid.all():
+                        print("    Post-dissolve repair needed")
+                        dissolved['geometry'] = dissolved.geometry.buffer(0)
+                        
+                    next_level.append(dissolved)
+                except Exception as e:
+                    print(f"    Error dissolving pair {i} and {i+1}: {str(e)}")
+                    # Fall back to simpler approach - just concat without dissolve and fix later
+                    merged_gdf = pd.concat([gdf_list[i], gdf_list[i+1]], ignore_index=True)
+                    next_level.append(merged_gdf)
             else:
                 # Odd element, just carry forward
                 next_level.append(gdf_list[i])
