@@ -3,6 +3,9 @@ Extract pixel values from satellite imagery VRTs at the locations of training da
 This script is designed to be run after the training data has been downloaded and the VRTs have been created.
 Running on HPC:
 python 02-extract-training-data.py --imagery-path ~/AU_AIMS_S2-comp
+
+Local machine:
+python 02-extract-training-data.py --imagery-path ~/Documents/2025/GIS/AU_AIMS_S2-comp
 """
 # Running locally with the imagery on a separate drive:
 # python 02-extract-training-data.py --imagery-path D:\AU_AIMS_S2-comp
@@ -44,6 +47,9 @@ training_shp_path = Path(f'data/{version}/in/training/Training-data.shp')
 lowtide_false_color_vrt_path = imagery_base_path / 'low_tide_infrared' / 'low_tide_infrared_national.vrt'
 lowtide_true_color_vrt_path = imagery_base_path / 'low_tide_true_colour' / 'low_tide_true_colour_national.vrt'
 alltide_true_color_vrt_path = imagery_base_path / '15th_percentile' / '15th_percentile_national.vrt'
+
+# Additional proxy layers
+texture_true_color_vrt_path = imagery_base_path / 'low-tide-true-colour-texture-diff' / 'low-tide-true-colour-texture-diff_national.vrt'
 
 # --- Output file path (relative to the script location) ---
 output_dir = Path('working/training-data')
@@ -120,7 +126,7 @@ def extract_pixel_values(vrt_path, coords_for_sampling, band_names):
     # *** Check if VRT exists before trying to open ***
     if not vrt_path.exists():
         print(f"  Error: VRT file not found at {vrt_path}")
-        return None, None
+        exit
 
     try:
         with rasterio.open(vrt_path) as src:
@@ -234,6 +240,14 @@ at_tc_extracted_df, at_tc_crs = extract_pixel_values(
 if at_tc_extracted_df is not None and at_tc_crs and at_tc_crs != raster_crs:
      print(f"Warning: All tide True Color VRT CRS ({at_tc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
 
+# --- Extract from Texture Diff True Color VRT ---
+tx_tc_band_names = ['S2_TX_B2', 'S2_TX_B3', 'S2_TX_B4']
+tx_tc_extracted_df, tx_tc_crs = extract_pixel_values(
+    texture_true_color_vrt_path, coords_for_sampling, tx_tc_band_names)
+if tx_tc_extracted_df is not None and tx_tc_crs and tx_tc_crs != raster_crs:
+     print(f"Warning: Texture VRT CRS ({tx_tc_crs}) differs from initially detected raster CRS ({raster_crs}). This might indicate inconsistent VRTs.")
+
+
 # --- Combine Data ---
 if lt_fc_extracted_df is not None and lt_tc_extracted_df is not None and at_tc_extracted_df is not None:
     print("Combining original data attributes with extracted pixel values...")
@@ -250,12 +264,14 @@ if lt_fc_extracted_df is not None and lt_tc_extracted_df is not None and at_tc_e
     lt_fc_extracted_df.index = final_df_base.index
     lt_tc_extracted_df.index = final_df_base.index
     at_tc_extracted_df.index = final_df_base.index
+    tx_tc_extracted_df.index = final_df_base.index
+
 
     # Concatenate base dataframe with the new pixel value dataframes
-    final_df = pd.concat([final_df_base, lt_fc_extracted_df, lt_tc_extracted_df, at_tc_extracted_df], axis=1)
+    final_df = pd.concat([final_df_base, lt_fc_extracted_df, lt_tc_extracted_df, at_tc_extracted_df, tx_tc_extracted_df], axis=1)
 
     # Reorder columns for clarity (optional)
-    cols_order = output_columns + lt_fc_band_names + lt_tc_band_names + at_tc_band_names
+    cols_order = output_columns + lt_fc_band_names + lt_tc_band_names + at_tc_band_names + tx_tc_band_names
     # Ensure all columns actually exist before trying to reorder
     cols_order = [col for col in cols_order if col in final_df.columns]
     final_df = final_df[cols_order]
@@ -265,7 +281,7 @@ if lt_fc_extracted_df is not None and lt_tc_extracted_df is not None and at_tc_e
     print(f"Saving combined data to: {output_csv_path}")
     try:
         # Drop rows where *all* extracted pixel values are NaN (optional)
-        all_band_cols = lt_fc_band_names + lt_tc_band_names + at_tc_band_names
+        all_band_cols = lt_fc_band_names + lt_tc_band_names + at_tc_band_names + tx_tc_band_names
         # Filter band cols that actually exist in the dataframe
         all_band_cols = [col for col in all_band_cols if col in final_df.columns]
         if all_band_cols: # Only drop if there are band columns to check
